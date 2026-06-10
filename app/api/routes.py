@@ -32,7 +32,11 @@ async def parse_pdf_api(file: UploadFile = File(...)):
         uploaded_files.append(file.filename)
 
         uploaded_file_details.append(
-            {"filename": file.filename, "documents": len(parsed_data["documents"]), "pages": parsed_data["pages"]}
+            {
+                "filename": file.filename,
+                "documents": len(parsed_data["documents"]),
+                "pages": parsed_data["pages"],
+            }
         )
 
     return {
