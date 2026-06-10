@@ -10,7 +10,7 @@ wheels/
 .venv
 .env
 .DS_Store
-data/uploads/
+data/
 
 node_modules/
 dist/

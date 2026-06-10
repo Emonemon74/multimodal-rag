@@ -1,134 +1,138 @@
 async function uploadPDF() {
+  const fileInput = document.getElementById("pdfFile");
 
-    const fileInput =
-        document.getElementById(
-            "pdfFile"
-        );
+  if (!fileInput.files[0]) {
+    alert("Please select a PDF");
 
-    if (!fileInput.files[0]) {
+    return;
+  }
 
-        alert(
-            "Please select a PDF"
-        );
+  const formData = new FormData();
 
-        return;
-    }
+  formData.append("file", fileInput.files[0]);
 
-    const formData =
-        new FormData();
+  const response = await fetch("/parse-pdf", {
+    method: "POST",
+    body: formData,
+  });
 
-    formData.append(
-        "file",
-        fileInput.files[0]
-    );
+  const data = await response.json();
 
-    const response =
-        await fetch(
-            "/parse-pdf",
-            {
-                method: "POST",
-                body: formData
-            }
-        );
+  loadUploadedFiles();
 
-    const data =
-        await response.json();
-
-    alert(data.message);
+  alert(data.message);
 }
 
-
 async function askQuestion() {
+  const questionInput = document.getElementById("question");
 
-    const questionInput =
-        document.getElementById("question");
+  const question = questionInput.value;
 
-    const question =
-        questionInput.value;
+  if (!question) {
+    return;
+  }
 
-    if (!question) {
-        return;
-    }
+  const chatContainer = document.getElementById("chatContainer");
 
-    const chatContainer =
-        document.getElementById("chatContainer");
-
-    // USER MESSAGE
-
-    chatContainer.innerHTML += `
+  chatContainer.innerHTML += `
         <div class="message user">
             ${question}
         </div>
     `;
 
-    // BOT MESSAGE
+  const botMessage = document.createElement("div");
 
-    const botMessage =
-        document.createElement("div");
+  botMessage.className = "message bot";
 
-    botMessage.className =
-        "message bot";
+  botMessage.innerHTML = "Thinking...";
 
-    botMessage.innerHTML =
-        "Thinking...";
+  chatContainer.appendChild(botMessage);
 
-    chatContainer.appendChild(
-        botMessage
-    );
+  const response = await fetch("/ask", {
+    method: "POST",
 
-    chatContainer.scrollTop =
-        chatContainer.scrollHeight;
+    headers: {
+      "Content-Type": "application/json",
+    },
 
-    // API CALL
+    body: JSON.stringify({
+      question: question,
+    }),
+  });
 
-    const response = await fetch(
-        "/ask",
-        {
-            method: "POST",
+  const data = await response.json();
 
-            headers: {
-                "Content-Type":
-                    "application/json"
-            },
+  let sourcesHTML = "";
 
-            body: JSON.stringify({
-                question: question
-            })
-        }
-    );
+  if (data.sources) {
+    sourcesHTML = `
+            <div class="sources">
 
-    const reader =
-        response.body.getReader();
+                <strong>
+                    Sources Used:
+                </strong>
 
-    const decoder =
-        new TextDecoder();
+                <ul>
 
-    let fullText = "";
+                    ${data.sources
+                      .map(
+                        (source) => `
+                            <li>
+                               <strong>
+    📄 ${source.source}
+</strong>
+<br>
+<small>
+    Page: ${source.page}
+</small>
+                            </li>
+                        `,
+                      )
+                      .join("")}
 
-    botMessage.innerHTML = "";
+                </ul>
 
-    while (true) {
+            </div>
+        `;
+  }
 
-        const {
-            done,
-            value
-        } = await reader.read();
+  botMessage.innerHTML = marked.parse(data.answer) + sourcesHTML;
 
-        if (done) {
-            break;
-        }
+  questionInput.value = "";
 
-        const chunk =
-            decoder.decode(value);
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
 
-        fullText += chunk;
+async function loadUploadedFiles() {
+  const response = await fetch("/uploaded-files");
 
-        botMessage.innerHTML =
-            marked.parse(fullText);
+  const data = await response.json();
 
-        chatContainer.scrollTop =
-            chatContainer.scrollHeight;
-    }
+  const pdfList = document.getElementById("pdfList");
 
-    questionInput.value = "";
+  pdfList.innerHTML = "";
+
+  data.files.forEach((file) => {
+    pdfList.innerHTML += `
+        <li>
+            📄 ${file.filename}
+            <br>
+            <small>
+    Pages: ${file.pages}
+    <br>
+    Chunks: ${file.documents}
+</small>
+        </li>
+    `;
+  });
+}
+
+loadUploadedFiles();
+
+async function clearChat() {
+  await fetch("/chat-history", {
+    method: "DELETE",
+  });
+
+  document.getElementById("chatContainer").innerHTML = "";
 }

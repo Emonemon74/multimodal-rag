@@ -128,7 +128,7 @@ def parse_pdf(pdf_path):
                     "metadata": {
                         "page": page_number,
                         "chunk_index": chunk_index,
-                        "source": pdf_path
+                        "source": pdf_path.split("/")[-1]
                     }
                 }
             )
@@ -144,6 +144,7 @@ def parse_pdf(pdf_path):
     )
 
     return {
-        "documents": documents,
-        "tables": []
-    }
+    "documents": documents,
+    "tables": [],
+    "pages": len(pages)
+}
