@@ -4,14 +4,13 @@ from fastapi import APIRouter, UploadFile, File
 
 from app.models.request_models import QuestionRequest
 from app.services.pdf_parser import parse_pdf
-from app.services.vector_store import create_vector_store, load_vector_store
+from app.services.vector_store import create_vector_store
 from app.services.llm import generate_answer
 
 router = APIRouter()
 
 uploaded_files = []
 uploaded_file_details = []
-chat_history = []
 
 
 @router.post("/parse-pdf")
@@ -49,36 +48,12 @@ async def parse_pdf_api(file: UploadFile = File(...)):
 @router.post("/ask")
 def ask_question(request: QuestionRequest):
 
-    vector_store = load_vector_store()
-
-    retriever = vector_store.as_retriever(
-        search_type="mmr", search_kwargs={"k": 6, "fetch_k": 20}
-    )
-
-    docs = retriever.invoke(request.question)
-
-    context = "\n".join([doc.page_content for doc in docs])
-
-    history_text = "\n".join(chat_history[-6:])
-
     answer = generate_answer(
-        question=request.question, context=context, chat_history=history_text
+        question=request.question,
+        chat_history=request.chat_history,
     )
 
-    chat_history.append(f"User: {request.question}")
-
-    chat_history.append(f"Assistant: {answer}")
-
-    sources = [
-        {
-            "source": doc.metadata.get("source", "Unknown"),
-            "page": doc.metadata.get("page", "Unknown"),
-            "content": doc.page_content[:300],
-        }
-        for doc in docs
-    ]
-
-    return {"answer": answer, "sources": sources}
+    return {"answer": answer}
 
 
 @router.get("/uploaded-files")
@@ -89,7 +64,5 @@ def get_uploaded_files():
 
 @router.delete("/chat-history")
 def clear_chat_history():
-
-    chat_history.clear()
 
     return {"message": "Chat history cleared successfully"}

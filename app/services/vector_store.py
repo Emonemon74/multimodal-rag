@@ -36,3 +36,24 @@ def load_vector_store():
         persist_directory=PERSIST_DIRECTORY,
         embedding_function=embedding_model,
     )
+
+
+def search_pdf_chunks(query, k=6, fetch_k=20):
+
+    vector_store = load_vector_store()
+
+    retriever = vector_store.as_retriever(
+        search_type="mmr", search_kwargs={"k": k, "fetch_k": fetch_k}
+    )
+
+    docs = retriever.invoke(query)
+
+    return [
+        {
+            "source": doc.metadata.get("source", "Unknown"),
+            "page": doc.metadata.get("page", "Unknown"),
+            "chunk_index": doc.metadata.get("chunk_index", "Unknown"),
+            "content": doc.page_content,
+        }
+        for doc in docs
+    ]
